@@ -3,7 +3,7 @@ FROM ubuntu
 WORKDIR /app
 
 COPY requirements.txt /app
-COPY python-web-app /app
+COPY python-web-app/devops /app
 
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
