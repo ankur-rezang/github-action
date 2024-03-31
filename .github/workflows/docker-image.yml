@@ -31,12 +31,15 @@ jobs:
            BRANCH_NAME=${GITHUB_REF#refs/heads/} # branch name
   
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v3
         with: 
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
           aws-region: "ap-south-1"
-
+          
+      - name: Print Branch and Environment
+        run: aws s3 ls 
+     
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
