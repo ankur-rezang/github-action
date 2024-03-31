@@ -11,7 +11,7 @@ COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
     
 # Copy the application code
-COPY python-web-app /app/python-web-app
+COPY devops /app/devops
 
 # Set the entrypoint and default command
 ENTRYPOINT ["python3"]
