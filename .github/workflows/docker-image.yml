@@ -1,18 +1,46 @@
-name: Docker Image CI
+name: Build and Push Docker Image to ECR
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - master
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+      - Development
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: shoppi
 
 jobs:
-
-  build:
-
+  build-and-deploy:
+    name: Build and Push Docker Image to ECR
     runs-on: ubuntu-latest
-
+    
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+  
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with: 
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, Tag and Push Image to Amazon ECR
+        env: 
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          SERVICE_NAME=$(basename $GITHUB_REPOSITORY)
+          BRANCH_NAME=${GITHUB_REF#refs/heads/} # branch name
+          SHORT_SHA=$(echo $GITHUB_SHA | cut -c1-7) # commit short SHA
+          IMAGE_TAG=${BRANCH_NAME}-${SHORT_SHA}
+
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$SERVICE_NAME-$IMAGE_TAG .    
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$SERVICE_NAME-$IMAGE_TAG
