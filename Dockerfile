@@ -8,7 +8,7 @@ COPY python-web-app /app
 RUN apt-get update && \
     apt-get install -y python3 python3-pip && \
     pip install -r requirements.txt && \
-    cd python-web-app
+    # cd python-web-app
 
 ENTRYPOINT ["python3"]
 CMD ["manage.py", "runserver", "0.0.0.0:8000"]
