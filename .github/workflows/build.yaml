@@ -1,1 +1,171 @@
-jjj
+name: Build Package Template
+
+
+
+on:
+
+  workflow_call:
+
+    inputs:
+
+      build_type:
+
+        description: 'Debug or production build'
+
+        type: string
+
+        required: false
+
+        default: 'debug'
+
+          
+
+      branch_name:
+
+        description: 'Branch name'
+
+        type: string
+
+        required: false
+
+        default: 'development'
+
+
+
+      username:
+
+        description: 'Username'
+
+        type: string
+
+        required: false
+
+        default: 'nightly'
+
+      
+
+      app_name:
+
+        description: 'App name'
+
+        type: string
+
+        required: false
+
+        default: nightly
+
+    
+
+jobs:
+
+  debug_build:
+
+    if: inputs.build_type == 'debug'
+
+    runs-on: ubuntu-latest
+
+    container: node:16.20-bullseye
+
+    outputs:
+
+      PACKAGE: ${{ steps.build_step.outputs.PACKAGE }}
+
+      DATEFORMAT: ${{ steps.build_step.outputs.DATEFORMAT }}
+
+    steps:
+
+      - name: Checkout code
+
+        uses: actions/checkout@v4
+
+        with:
+
+          ref: ${{ inputs.branch_name }}
+
+
+
+      - name: Install dependencies
+
+        run: |
+
+          apt update
+
+          apt install sudo -y
+
+          sudo apt install python3-pip -y
+
+          pip3 install 2to3
+
+          cd project1/ ; npm install
+
+          npm install -g grunt-cli
+
+          npm install grunt --save-dev
+
+
+
+      - name: Run 2to3 conversion
+
+        run: |
+
+          echo "PYTHON3_DATEFORMAT=$(date +%Y_%m_%d)" >> $GITHUB_OUTPUT
+
+          echo "Running 2to3"
+
+          2to3 project1/ -w -n 2>&1 | tee project1/2to3_output.txt
+
+
+
+      - name: Debug build
+
+        id: build_step
+
+        run: |
+
+          git config --global --add safe.directory '*'
+
+          echo "DATE=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+          echo "DATEFORMAT=$(date +%Y_%m_%d)" >> $GITHUB_OUTPUT
+
+          cd builddir/
+
+          sudo ./build_code_package.sh -p -s --version $(date +'%Y_%m_%d')_onprem_debug 2>&1 | tee /tmp/build.log
+
+          sudo mv packages/package_$(date +'%Y_%m_%d')onprem_debug.tgz packages/package$(date +'%Y_%m_%d')debug$(git rev-parse --short=5 HEAD).tgz 
+
+          echo "PACKAGE=$(ls packages/)" >> $GITHUB_OUTPUT
+
+
+
+      - name: Upload log artifact
+
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: debug_log
+
+          path: /tmp/build.log
+
+          retention-days: 1
+
+
+
+      - name: Upload debug build to S3
+
+        uses: shallwefootball/s3-upload-action@master
+
+        id: s3
+
+        with:
+
+          aws_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY}}
+
+          aws_bucket: wizbuildbucket
+
+          source_dir: 'builddir/packages/'
+
+          destination_dir: ${{ steps.build_step.outputs.DATE }}
